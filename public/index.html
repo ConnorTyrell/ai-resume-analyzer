@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Resume Analyzer</title>
+  <style>
+    body { font-family: Arial; max-width: 600px; margin: 40px auto; background-color: #9292D1; }
+    textarea { width: 100%; height: 150px; }
+    .result { margin-top: 20px; padding: 15px; background: #ddd; border-radius: 8px; }
+    .score-bar {
+  width: 100%;
+  height: 20px;
+  background: #ddd;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.score-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+  </style>
+</head>
+<body>
+
+  <h1>AI Resume Analyzer</h1>
+
+  <form id="resumeForm" enctype="multipart/form-data">
+    <label>Upload Resume (PDF or DOCX):</label><br>
+    <input type="file" id="resume" name="resume" 
+      accept="application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+      required><br><br>
+
+    <label>Job Description:</label><br>
+    <textarea id="jobDescription" name="jobDescription" required></textarea><br><br>
+
+    <button type="submit">Analyze</button>
+  </form>
+
+  <div id="result" class="result" style="display:none;"></div>
+
+  <script>
+    document.getElementById("resumeForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const resultDiv = document.getElementById("result");
+      resultDiv.style.display = "block";
+      resultDiv.innerHTML = "Analyzing... please wait.";
+
+      const formData = new FormData();
+      formData.append("resume", document.getElementById("resume").files[0]);
+      formData.append("jobDescription", document.getElementById("jobDescription").value);
+
+      try {
+        const response = await fetch("/analyze", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+
+        // Handle backend errors safely
+        if (!data || data.error) {
+        
+          resultDiv.innerHTML = `
+            <div style="padding: 10px; background: #fee; border: 1px solid #f99;">
+              <strong>Error analyzing resume.</strong><br><br>
+              <pre>${data?.raw_output || data?.error || "No output returned"}</pre>
+            </div>
+          `;
+          return;
+        }
+
+        // Display results
+        const scoreColor =
+          data.match_score >= 80 ? "#4CAF50" :   // green
+          data.match_score >= 50 ? "#FFC107" :   // yellow
+          "#F44336";                             // red
+
+        const scoreBar = `
+          <div class="score-bar">
+            <div class="score-fill" style="width:${data.match_score}%; background:${scoreColor};"></div>
+          </div>
+        `;
+
+
+        resultDiv.innerHTML = `
+           <h3>Match Score: ${data.match_score}%</h3>
+            ${scoreBar}
+
+            <strong>Summary:</strong>
+            <p>${data.summary}</p>
+
+          <strong>Strengths:</strong>
+          <ul>${data.strengths.map(s => `<li>${s}</li>`).join("")}</ul>
+
+          <strong>Weaknesses:</strong>
+          <ul>${data.weaknesses.map(s => `<li>${s}</li>`).join("")}</ul>
+
+          <strong>Recommendations:</strong>
+          <ul>${data.recommendations.map(s => `<li>${s}</li>`).join("")}</ul>
+        `;
+      } catch (err) {
+        resultDiv.innerHTML = `
+          <div style="padding: 10px; background: #fee; border: 1px solid #f99;">
+            <strong>Server Error:</strong> ${err.message}
+          </div>
+        `;
+      }
+    });
+  </script>
+
+</body>
+</html>
+

@@ -1,0 +1,7 @@
+node_modules/
+uploads/
+.env
+*.pdf
+*.docx
+*.doc
+.DS_Store
